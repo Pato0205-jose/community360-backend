@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciar Sesión | Community 360</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+  <main class="w-full max-w-md">
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl shadow-2xl p-8 backdrop-blur">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 font-bold text-lg mb-4">
+          C360
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Community 360</h1>
+        <p class="text-sm text-slate-400 mt-1">Panel Analítico de Administración</p>
+      </div>
+
+      <div
+        id="errorAlert"
+        class="hidden mb-5 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-300"
+        role="alert"
+      ></div>
+
+      <form id="loginForm" class="space-y-5" novalidate>
+        <div>
+          <label for="email" class="block text-sm font-medium text-slate-300 mb-1.5">
+            Correo electrónico
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            placeholder="admin@community360.com"
+            class="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-slate-300 mb-1.5">
+            Contraseña
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+            placeholder="••••••••"
+            class="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition"
+          />
+        </div>
+
+        <button
+          type="submit"
+          id="submitBtn"
+          class="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition"
+        >
+          Iniciar sesión
+        </button>
+      </form>
+    </div>
+
+    <p class="text-center text-xs text-slate-500 mt-6">
+      Community 360 &middot; Turso + Firestore + Socket.IO
+    </p>
+  </main>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const errorAlert = document.getElementById('errorAlert');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function mostrarError(msg) {
+      errorAlert.textContent = msg;
+      errorAlert.classList.remove('hidden');
+    }
+
+    function ocultarError() {
+      errorAlert.textContent = '';
+      errorAlert.classList.add('hidden');
+    }
+
+    (async function verificarSesion() {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/perfil', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          window.location.replace('/dashboard.html');
+        } else {
+          localStorage.removeItem('token');
+          localStorage.removeItem('admin');
+        }
+      } catch {
+        // Permite continuar en el login si el servidor aún está iniciando
+      }
+    })();
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      ocultarError();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        mostrarError('Ingresa tu correo electrónico y contraseña.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Validando...';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.token) {
+          mostrarError(data.error || 'Credenciales inválidas.');
+          return;
+        }
+
+        localStorage.setItem('token', data.token);
+        if (data.admin) {
+          localStorage.setItem('admin', JSON.stringify(data.admin));
+        }
+
+        window.location.href = '/dashboard.html';
+      } catch {
+        mostrarError('No se pudo conectar con el servidor en localhost:3000.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Iniciar sesión';
+      }
+    });
+  </script>
+</body>
+</html>
