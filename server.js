@@ -45,39 +45,16 @@ const turso = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-// --- BLOQUE TEMPORAL: INSERTAR ADMIN PARA ENTREGA FINAL ---
-(async () => {
-  const nombre = 'lizandro.reyes';
-  const email = 'lizandro.reyes@utmetropolitana.edu.mx';
-  const passwordPlano = 'lizandr0_reye$';
-
-  try {
-    const existe = await turso.execute({
-      sql: 'SELECT id_admin FROM administradores WHERE LOWER(email) = LOWER(?) LIMIT 1',
-      args: [email],
-    });
-
-    if (existe.rows.length > 0) {
-      console.log(`El administrador '${nombre}' ya existe en Turso (id_admin: ${existe.rows[0].id_admin}).`);
-      return;
-    }
-
-    const passwordHash = await bcrypt.hash(passwordPlano, 10);
-    const creadoEn = new Date().toISOString();
-
-    await turso.execute({
-      sql: 'INSERT INTO administradores (nombre, email, password_hash, creado_en) VALUES (?, ?, ?, ?)',
-      args: [nombre, email, passwordHash, creadoEn],
-    });
-
-    console.log(`Administrador '${nombre}' creado con éxito en Turso.`);
-  } catch (error) {
-    console.error(`Error al crear el administrador '${nombre}':`, error);
+const rawFirebaseConfig = (process.env.FIREBASE_SERVICE_ACCOUNT || '').trim();
+let serviceAccount;
+if (rawFirebaseConfig.startsWith('{')) {
+  serviceAccount = JSON.parse(rawFirebaseConfig);
+  if (serviceAccount.private_key) {
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
   }
-})();
-// --- FIN BLOQUE TEMPORAL ---
-
-const serviceAccount = require(path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT));
+} else {
+  serviceAccount = require(path.resolve(rawFirebaseConfig));
+}
 initializeApp({
   credential: cert(serviceAccount),
 });
